@@ -1,0 +1,15 @@
+<controls:FancyWindow xmlns="https://spacestation14.io"
+                      xmlns:controls="clr-namespace:Content.Client.UserInterface.Controls"
+                      Title="{Loc 'bell-console-title'}"
+                      MinSize="320 420">
+    <BoxContainer Orientation="Vertical" Margin="4">
+        <Label Name="StatusLabel" HorizontalExpand="True" />
+        <ProgressBar Name="TransitBar"
+                     MinValue="0" MaxValue="1"
+                     Visible="False"
+                     Margin="0 4 0 4" />
+        <ScrollContainer VerticalExpand="True">
+            <BoxContainer Name="DestinationList" Orientation="Vertical" />
+        </ScrollContainer>
+    </BoxContainer>
+</controls:FancyWindow>

@@ -1,0 +1,19 @@
+# PUT YOUR TAGS IN ALPHABETICAL ORDER, 'TPTag' IS EXEMPT!
+# ALSO DOCUMENT WHERE THE HELL THEY'RE CALLED
+
+## C ##
+# Prototypes/_Trieste/bell-types.yml
+- type: Tag
+  id: TPTagCargoBell
+
+
+## D ##
+# Prototypes/_Trieste/bell-types.yml
+- type: Tag
+  id: TPTagDivingBell
+
+
+## T ##
+# Prototypes/_Trieste/bell-types.yml
+- type: Tag
+  id: TPTagTrenchBell
