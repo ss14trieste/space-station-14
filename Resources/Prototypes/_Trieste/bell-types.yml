@@ -1,0 +1,23 @@
+#- type: bellType
+#  id: CargoBell
+#  name: bell-type-cargo
+#  startupTime: 7.5
+#  hyperspaceTime: 15.0
+#  priorityTag: TPTagCargoBell
+#  shuttlePath: /Maps/_Trieste/Shuttles/diving_bell.yml # TEMP
+
+- type: bellType
+  id: DivingBell
+  name: bell-type-diving
+  startupTime: 5.0
+  hyperspaceTime: 10.0
+  priorityTag: TPTagDivingBell
+  shuttlePath: /Maps/_Trieste/Shuttles/diving_bell.yml # KINDA TEMP
+
+#- type: bellType
+#  id: TrenchBell
+#  name: bell-type-trench
+#  startupTime: 5.0
+#  hyperspaceTime: 20.0
+#  priorityTag: TPTagTrenchBell
+#  shuttlePath: /Maps/_Trieste/Shuttles/diving_bell.yml # TEMP
