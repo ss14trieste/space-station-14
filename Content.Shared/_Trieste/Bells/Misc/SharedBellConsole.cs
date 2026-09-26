@@ -1,3 +1,4 @@
+using Content.Shared.Shuttles.Systems;
 using Robust.Shared.Serialization;
 
 namespace Content.Shared._Trieste.Bells.Misc;
@@ -11,18 +12,16 @@ public enum BellConsoleUiKey : byte
 [Serializable, NetSerializable]
 public sealed class BellConsoleBoundUserInterfaceState(
     List<BellDestinationInfo> destinations,
-    bool unsummoned,
     bool locked,
-    bool inTransit,
+    FTLState? ftlState,
     string? currentLocationName,
     TimeSpan? transitStart,
     TimeSpan? transitEnd)
     : BoundUserInterfaceState
 {
     public List<BellDestinationInfo> Destinations = destinations;
-    public bool Unsummoned = unsummoned;
     public bool Locked = locked;
-    public bool InTransit = inTransit;
+    public FTLState? FtlState = ftlState;
     public string? CurrentLocationName = currentLocationName;
     public TimeSpan? TransitStart = transitStart;
     public TimeSpan? TransitEnd = transitEnd;

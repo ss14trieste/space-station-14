@@ -16,7 +16,7 @@ public sealed partial class BellConsoleSystem : EntitySystem
         UpdateUi(uid, comp);
     }
 
-    private void UpdateUi(EntityUid uid, BellConsoleComponent comp)
+    public void UpdateUi(EntityUid uid, BellConsoleComponent comp)
     {
         var status = _bell.GetBellStatus(comp.BellType);
 
@@ -24,14 +24,19 @@ public sealed partial class BellConsoleSystem : EntitySystem
             .Select(e => new BellDestinationInfo(GetNetEntity(e.Door), e.Name))
             .ToList();
 
+        var currentLocationName = string.Empty;
+        if (status.CurrentPort is { } port && TryComp<BellPortComponent>(port, out var portComp))
+            currentLocationName = Loc.GetString(portComp.PortName);
+
+        Log.Warning($"Current location is {currentLocationName}");
+
         var state = new BellConsoleBoundUserInterfaceState(
             destinations,
-            status.State == BellState.Unsummoned,
             status.Locked,
-            status.State == BellState.InTransit,
-            null,
-            status.TransitStart,
-            status.TransitEnd);
+            status.FtlState,
+            currentLocationName,
+            status.PhaseStart,
+            status.PhaseEnd);
 
         _ui.SetUiState(uid, BellConsoleUiKey.Key, state);
     }
@@ -39,15 +44,11 @@ public sealed partial class BellConsoleSystem : EntitySystem
     [SubscribeLocalEvent]
     private void OnTravelMessage(EntityUid uid, BellConsoleComponent comp, BellConsoleTravelMessage args)
     {
-        Log.Debug($"[Bell] Server received travel message: door={args.Destination}, bellType={comp.BellType}");
         var doorUid = GetEntity(args.Destination);
 
         if (!_bell.TravelTo(comp.BellType, doorUid))
-        {
-            Log.Debug("[Bell] TravelTo returned false - check the five early-exit conditions.");
             return;
-        }
 
-        UpdateUi(uid, comp);
+        _bell.RefreshConsolesFor(comp.BellType);
     }
 }

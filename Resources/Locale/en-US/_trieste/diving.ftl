@@ -1,9 +1,12 @@
-bell-console-title          = Bell Console
-bell-console-status-locked  = LOCKED DOWN
-bell-console-status-transit = IN TRANSIT
-bell-console-status-docked  = Docked: {$location}
-bell-console-status-unknown = N/A
-bell-console-status-unsummoned = SUSPENDED IN AIR
+bell-console-title          = TRIESTE BELL CONTROL v2
+bell-console-status-locked  = [ LOCKED DOWN ]
+bell-console-status-transit = [ TRANSIT ]
+bell-console-status-docked  = [ {$location} ]
+bell-console-status-cooldown = [ COOLDOWN ]
+bell-console-status-unsummoned = [ IN AIR ]
+bell-console-status-liftoff = [ STARTING ]
+
+bell-console-location-unknown = N/A
 
 # CARGO #
 bell-type-cargo             = Cargo Bell

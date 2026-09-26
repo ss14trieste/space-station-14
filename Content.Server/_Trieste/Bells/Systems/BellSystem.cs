@@ -6,10 +6,9 @@ using Content.Shared._Trieste.Bells.Components;
 using Content.Shared._Trieste.Bells.Prototypes;
 using Content.Shared.GameTicking.Events;
 using Content.Shared.Shuttles.Components;
-using Content.Shared.Station.Systems;
+using Content.Shared.Shuttles.Systems;
 using Robust.Shared.EntitySerialization.Systems;
 using Robust.Shared.Prototypes;
-using Robust.Shared.Timing;
 using Robust.Shared.Utility;
 
 namespace Content.Server._Trieste.Bells.Systems;
@@ -19,11 +18,10 @@ namespace Content.Server._Trieste.Bells.Systems;
 /// </summary>
 public sealed partial class BellSystem : EntitySystem
 {
+    [Dependency] private BellConsoleSystem _bellConsole = default!;
     [Dependency] private SharedMapSystem _map = default!;
     [Dependency] private MapLoaderSystem _mapLoader = default!;
-    [Dependency] private StationSystem _station = default!;
     [Dependency] private ShuttleSystem _shuttle = default!;
-    [Dependency] private IGameTiming _timing = default!;
 
     private readonly Dictionary<ProtoId<BellTypePrototype>, List<BellPortEntry>> _ports = new();
     private readonly Dictionary<ProtoId<BellTypePrototype>, List<EntityUid>> _bells = new();
@@ -65,7 +63,7 @@ public sealed partial class BellSystem : EntitySystem
             return;
 
         _ports.GetOrNew(comp.BellType)
-            .Add(new BellPortEntry(uid, grid, _station.GetOwningStation(grid), Loc.GetString(comp.PortName)));
+            .Add(new BellPortEntry(uid, grid, Loc.GetString(comp.PortName)));
     }
 
     [SubscribeLocalEvent]
@@ -87,7 +85,7 @@ public sealed partial class BellSystem : EntitySystem
     [SubscribeLocalEvent]
     private void OnStartup(EntityUid uid, BellComponent comp, ComponentStartup args)
     {
-        comp.State = BellState.Unsummoned;
+        comp.Unsummoned = comp.CurrentPort == null;
         comp.CurrentPort = null;
         comp.TransitStartTime = null;
         comp.TransitEndTime = null;
@@ -103,58 +101,47 @@ public sealed partial class BellSystem : EntitySystem
     }
 
     [SubscribeLocalEvent]
-    private void OnFTLStarted(EntityUid uid, BellComponent comp, ref FTLStartedEvent args)
+    private void OnBellFtlStarted(EntityUid uid, BellComponent comp, ref FTLStartedEvent args)
     {
-        comp.State = BellState.InTransit;
-        comp.CurrentPort = null;
-
-        if (ProtoMan.TryIndex(comp.BellType, out var proto))
-        {
-            var duration = (proto.StartupTime ?? 0) + (proto.HyperspaceTime ?? 0);
-            comp.TransitStartTime = _timing.CurTime;
-            comp.TransitEndTime = _timing.CurTime + TimeSpan.FromSeconds(duration);
-        }
+        RefreshConsolesFor(comp.BellType);
     }
 
     [SubscribeLocalEvent]
-    private void OnFTLCompleted(EntityUid uid, BellComponent comp, ref FTLCompletedEvent args)
+    private void OnBellFtlCompleted(EntityUid uid, BellComponent comp, ref FTLCompletedEvent args)
     {
-        comp.State = BellState.Docked;
-        comp.CurrentPort = TryFindDockedPort(uid, comp.BellType);
-        comp.TransitStartTime = null;
-        comp.TransitEndTime = null;
-
-        if (comp.CurrentPort is null)
-            Log.Warning($"Bell {ToPrettyString(uid)} completed its travel but couldn't find a matching port.");
+        RefreshConsolesFor(comp.BellType);
     }
 
-    private EntityUid? TryFindDockedPort(EntityUid bellUid, ProtoId<BellTypePrototype> bellType)
+    public void RefreshConsolesFor(ProtoId<BellTypePrototype> bellType)
     {
-        var dockQuery = GetEntityQuery<DockingComponent>();
-
-        var enumerator = Transform(bellUid).ChildEnumerator;
-        while (enumerator.MoveNext(out var child))
+        var query = EntityQueryEnumerator<BellConsoleComponent>();
+        while (query.MoveNext(out var uid, out var comp))
         {
-            if (!dockQuery.TryGetComponent(child, out var dock) || !dock.Docked || dock.DockedWith is not { } otherDock)
-                continue;
-
-            if (TryComp<BellPortComponent>(otherDock, out var port) && port.BellType == bellType)
-                return otherDock;
+            if (comp.BellType == bellType)
+                _bellConsole.UpdateUi(uid, comp);
         }
-
-        return null;
     }
 
     public BellStatus GetBellStatus(ProtoId<BellTypePrototype> bellType)
     {
         if (!_bells.TryGetValue(bellType, out var list) || list.Count == 0)
-            return new BellStatus(null, BellState.Unsummoned, false, null, null, null);
+            return new BellStatus(null, false, null, null, null, null);
 
         var bellUid = list[0];
         var comp = Comp<BellComponent>(bellUid);
-        var grid = comp.CurrentPort is { } port ? Transform(port).GridUid : Transform(bellUid).GridUid;
 
-        return new BellStatus(bellUid, comp.State, comp.Locked, grid, comp.TransitStartTime, comp.TransitEndTime);
+        FTLState? ftlState = null;
+        TimeSpan? start = null;
+        TimeSpan? end = null;
+
+        if (TryComp<FTLComponent>(bellUid, out var ftl))
+        {
+            ftlState = ftl.State;
+            start = ftl.StateTime.Start;
+            end = ftl.StateTime.End;
+        }
+
+        return new BellStatus(bellUid, comp.Locked, comp.CurrentPort, ftlState, start, end);
     }
 
     public bool TravelTo(ProtoId<BellTypePrototype> bellType, EntityUid destinationDoor)
@@ -163,7 +150,7 @@ public sealed partial class BellSystem : EntitySystem
         if (status.Bell is not { } bellUid)
             return false;
 
-        if (status.Locked || status.State == BellState.InTransit)
+        if (status.Locked)
             return false;
 
         if (!TryComp<BellPortComponent>(destinationDoor, out var destPort) || destPort.BellType != bellType)
@@ -181,6 +168,9 @@ public sealed partial class BellSystem : EntitySystem
         if (!ProtoMan.TryIndex(bellType, out var bellProto))
             return false;
 
+        var comp = Comp<BellComponent>(bellUid);
+        comp.CurrentPort = destinationDoor;
+
         _shuttle.FTLToDock(
             bellUid,
             shuttleComp,
@@ -192,7 +182,7 @@ public sealed partial class BellSystem : EntitySystem
         return true;
     }
 
-    public void SetLocked(ProtoId<BellTypePrototype> bellType, bool locked)
+    public void SetLockedState(ProtoId<BellTypePrototype> bellType, bool locked)
     {
         if (!_bells.TryGetValue(bellType, out var list))
             return;
@@ -216,12 +206,12 @@ public sealed partial class BellSystem : EntitySystem
     }
 }
 
-public readonly record struct BellPortEntry(EntityUid Door, EntityUid Grid, EntityUid? Station, string Name);
+public readonly record struct BellPortEntry(EntityUid Door, EntityUid Grid, string Name);
 
 public readonly record struct BellStatus(
     EntityUid? Bell,
-    BellState State,
     bool Locked,
-    EntityUid? CurrentGrid,
-    TimeSpan? TransitStart,
-    TimeSpan? TransitEnd);
+    EntityUid? CurrentPort,
+    FTLState? FtlState,
+    TimeSpan? PhaseStart,
+    TimeSpan? PhaseEnd);

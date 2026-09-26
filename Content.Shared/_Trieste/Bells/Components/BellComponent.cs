@@ -9,8 +9,8 @@ public sealed partial class BellComponent : Component
     [DataField(required: true)] public ProtoId<BellTypePrototype> BellType;
 
     [DataField] public bool Locked;
+    [DataField] public bool Unsummoned;
 
-    public BellState State = BellState.Docked;
     public EntityUid? CurrentPort;
     public TimeSpan? TransitStartTime;
     public TimeSpan? TransitEndTime;
@@ -18,7 +18,5 @@ public sealed partial class BellComponent : Component
 
 public enum BellState : byte
 {
-    Unsummoned,
     Docked,
-    InTransit,
 }

@@ -16,6 +16,8 @@ public sealed partial class BellTypePrototype : IPrototype
     [DataField] public float? HyperspaceTime;
     [DataField] public string? PriorityTag;
 
+    [DataField] public float? CooldownTime;
+
     #endregion
 
 
